@@ -51,7 +51,48 @@ const inventory = [
       'images/markx/mark-x-right.jpeg',
       'images/markx/mark-x-steering.jpeg'
     ]
+  },
+  {
+    id: 2,
+    make: "Subaru", model: "Impreza", year: 2007,
+    price: "KSh 750,000",
+    fuel: "Petrol", trans: "Auto", mileage: "—",
+    location: "Nairobi", status: "available", category: "hatchback",
+    emoji: "🚗", bg: "bg2",
+    desc: "",
+    photos: [
+      "images/subaru/subaru-frontleft.jpeg",
+      "images/subaru/subaru-frontright.jpeg",
+      "images/subaru/subaru-front.jpeg",
+      "images/subaru/subaru-back.jpeg",
+      "images/subaru/subaru-intback.jpeg",
+      "images/subaru/subaru-intfront.jpeg",
+      "images/subaru/subaru-backright.jpeg",
+      "images/subaru/subaru-intright.jpeg"
+     
+    ]
+  },
+  {
+    id: 3,
+    make: "Nissan", model: "navara", year: 2007,
+    price: "KSh 650,000",
+    fuel: "Diesel", trans: "Auto", mileage: "—",
+    location: "Nairobi", status: "available", category: "suv",
+    emoji: "🚗", bg: "bg3",
+    desc: "",
+    photos: [
+      "images/navara/navara-front.jpeg",
+      "images/navara/navara-bonnet.jpeg",
+      "images/navara/navara-frontright.jpeg",
+      "images/navara/navarafront-left.jpeg",
+      "images/navara/navara-backseat.jpeg",
+      "images/navara/navara-back.jpeg",
+      "images/navara/navara-backleft.jpeg",
+      "images/navara/navara-backright.jpeg"
+      
+    ]
   }
+];
 
   /* ── COPY THIS BLOCK TO ADD A NEW CAR ──────
   ,{
@@ -74,7 +115,7 @@ const inventory = [
     ]
   }
   ─────────────────────────────────────────── */
-];
+
 
 
 /* ══════════════════════════════════════
