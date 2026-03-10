@@ -16,7 +16,7 @@ truedrive-kenya/
 ├── inventory-manager.html ← Helper tool for managing cars
 ├── logo.png            ← Logo (dark nav version)
 ├── logo-footer.png     ← Logo (light footer version)
-└── images/
+└── images/markx/
     ├── mark-x-front.jpeg
     ├── mark-x-side.jpeg
     └── ... (all car photos go here)
