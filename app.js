@@ -1,698 +1,596 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="robots" content="noindex, nofollow" />
-  <title>TrueDrive Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent: #c8392b; --bg: #f5f4f0; --card: #ffffff;
-      --text: #1a1a18; --muted: #8a8a82; --border: #e5e4e0;
-      --green: #15803d; --green-bg: #dcfce7; --red-bg: #fee2e2;
-    }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+/* ============================================
+   TRUEDRIVE KENYA — app.js
+   Cars are now loaded from Supabase database.
+   To manage inventory, go to /admin.html
+   ============================================ */
 
-    /* LOGIN */
-    #loginScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .login-box { background: var(--card); border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .login-logo { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
-    .login-logo span { color: var(--accent); }
-    .login-box h2 { font-size: 1.1rem; font-weight: 500; color: var(--muted); margin-bottom: 32px; }
-    .login-box label { display: block; font-size: 0.82rem; font-weight: 500; margin-bottom: 6px; color: var(--muted); }
-    .login-box input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: inherit; margin-bottom: 16px; background: var(--bg); color: var(--text); transition: border-color .2s; }
-    .login-box input:focus { outline: none; border-color: var(--accent); }
-    .login-btn { width: 100%; padding: 13px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .2s; }
-    .login-btn:hover { opacity: 0.88; }
-    .login-error { display: none; margin-top: 12px; padding: 10px 14px; background: var(--red-bg); color: var(--accent); border-radius: 8px; font-size: 0.85rem; }
 
-    /* DASHBOARD */
-    #dashboard { display: none; }
-    .topbar { background: var(--text); color: white; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-    .topbar-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; }
-    .topbar-logo span { color: var(--accent); }
-    .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .topbar-email { font-size: 0.82rem; color: rgba(255,255,255,0.5); }
-    .logout-btn { background: transparent; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-family: inherit; transition: all .2s; }
-    .logout-btn:hover { color: white; border-color: rgba(255,255,255,0.5); }
-    .dash-inner { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-    .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
-    .dash-header h1 { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; }
-    .add-btn { background: var(--accent); color: white; border: none; padding: 10px 22px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .2s; }
-    .add-btn:hover { opacity: 0.88; }
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-box { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
-    .stat-box h3 { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
-    .stat-box p { font-size: 0.8rem; color: var(--muted); }
-    .table-wrap { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-    .table-wrap table { width: 100%; border-collapse: collapse; }
-    .table-wrap th { text-align: left; padding: 14px 16px; font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .table-wrap td { padding: 14px 16px; font-size: 0.88rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    .table-wrap tr:last-child td { border-bottom: none; }
-    .table-wrap tr:hover td { background: #fafaf8; }
-    .car-thumb { width: 60px; height: 44px; border-radius: 6px; object-fit: cover; display: block; }
-    .car-thumb-placeholder { width: 60px; height: 44px; border-radius: 6px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 0.72rem; font-weight: 600; }
-    .badge-available { background: var(--green-bg); color: var(--green); }
-    .badge-sold { background: var(--red-bg); color: var(--accent); }
-    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-    .edit-btn, .delete-btn, .sold-btn, .unsold-btn { padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: opacity .2s; }
-    .edit-btn { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
-    .sold-btn { background: var(--green-bg); color: var(--green); }
-    .unsold-btn { background: var(--red-bg); color: var(--accent); }
-    .delete-btn { background: var(--red-bg); color: var(--accent); }
-    .edit-btn:hover, .delete-btn:hover, .sold-btn:hover, .unsold-btn:hover { opacity: 0.75; }
+/* ══════════════════════════════════════
+   CONFIG
+══════════════════════════════════════ */
+const WHATSAPP         = '254758261532';
+const WHATSAPP_NUMBER  = WHATSAPP;
+const WHATSAPP_MESSAGE = "Hello TrueDrive Kenya! I'm interested in your services.";
 
-    /* MODAL */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto; }
-    .modal-overlay.open { display: flex; }
-    .modal-box { background: var(--card); border-radius: 16px; width: 100%; max-width: 660px; padding: 36px; margin: auto; }
-    .modal-box h2 { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: 24px; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .form-grid .full { grid-column: 1 / -1; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 0.82rem; font-weight: 500; color: var(--muted); }
-    .form-group input, .form-group select, .form-group textarea { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; background: var(--bg); color: var(--text); transition: border-color .2s; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
-    .form-group textarea { resize: vertical; min-height: 80px; }
-    .form-group .hint { font-size: 0.75rem; color: var(--muted); }
+const SUPABASE_URL = 'https://qmeosvkrbogdfmokgkpa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZW9zdmtyYm9nZGZtb2tna3BhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDE5MjAsImV4cCI6MjA5Mzg3NzkyMH0.J_WDhH7n5C1HciuL45GSiQhPQXq2FS-creSdyvEHYDs';
 
-    /* PHOTO UPLOAD */
-    .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg); }
-    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: #fdf5f4; }
-    .upload-zone p { font-size: 0.88rem; color: var(--muted); margin-bottom: 4px; }
-    .upload-zone span { font-size: 0.78rem; color: var(--muted); }
-    .upload-zone input[type="file"] { display: none; }
-    .photo-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
-    .photo-preview-item { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3; background: var(--bg); cursor: grab; border: 2px solid transparent; transition: border-color .2s, opacity .2s; }
-    .photo-preview-item:first-child { border-color: var(--accent); }
-    .photo-preview-item.dragging { opacity: 0.4; cursor: grabbing; }
-    .photo-preview-item.drag-target { border-color: var(--accent); border-style: dashed; }
-    .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-    .main-badge { position: absolute; bottom: 4px; left: 4px; background: var(--accent); color: white; font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
-    .remove-photo { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .upload-progress { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.78rem; font-weight: 600; }
-    .upload-done { position: absolute; inset: 0; background: rgba(21,128,61,0.4); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; }
-    .upload-status { font-size: 0.82rem; color: var(--muted); margin-top: 8px; min-height: 20px; }
+/* Live inventory loaded from Supabase */
+var inventory = [];
+var currentFilter = 'all';
 
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
-    .cancel-btn { padding: 10px 20px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; font-family: inherit; }
-    .save-btn { padding: 10px 24px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .2s; }
-    .save-btn:hover { opacity: 0.88; }
-    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.88rem; font-weight: 500; display: none; z-index: 300; white-space: nowrap; }
-    #toast.show { display: block; }
-    #toast.success { background: #15803d; }
-    #toast.error { background: var(--accent); }
+/* ══════════════════════════════════════
+   SUPABASE FETCH
+══════════════════════════════════════ */
+async function loadInventory() {
+  var grid = document.getElementById('carsGrid');
+  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">Loading cars...</p>';
 
-    @media (max-width: 640px) {
-      .topbar { padding: 0 16px; } .topbar-email { display: none; }
-      .dash-inner { padding: 20px 16px; } .modal-box { padding: 24px 20px; }
-      .form-grid { grid-template-columns: 1fr; } .form-grid .full { grid-column: 1; }
-      .table-wrap th:nth-child(3), .table-wrap td:nth-child(3),
-      .table-wrap th:nth-child(5), .table-wrap td:nth-child(5) { display: none; }
-    }
-  </style>
-</head>
-<body>
-
-<!-- LOGIN -->
-<div id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo">|TRUE<span>DRIVE</span></div>
-    <h2>Admin Dashboard — Sign In</h2>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="loginEmail" placeholder="your@email.com" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="••••••••" />
-    </div>
-    <button class="login-btn" onclick="doLogin()">Sign In →</button>
-    <div class="login-error" id="loginError"></div>
-  </div>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard">
-  <div class="topbar">
-    <div class="topbar-logo">|TRUE<span>DRIVE</span> Admin</div>
-    <div class="topbar-right">
-      <span class="topbar-email" id="userEmail"></span>
-      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
-    </div>
-  </div>
-  <div class="dash-inner">
-    <div class="dash-header">
-      <h1>Inventory Management</h1>
-      <button class="add-btn" onclick="openAddModal()">+ Add New Car</button>
-    </div>
-    <div class="stats-row">
-      <div class="stat-box"><h3 id="statTotal">—</h3><p>Total Cars</p></div>
-      <div class="stat-box"><h3 id="statAvailable">—</h3><p>Available</p></div>
-      <div class="stat-box"><h3 id="statSold">—</h3><p>Sold</p></div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Photo</th><th>Car</th><th>Price</th>
-            <th>Status</th><th>Category</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="carsTableBody">
-          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ADD / EDIT MODAL -->
-<div class="modal-overlay" id="carFormModal">
-  <div class="modal-box">
-    <h2 id="modalTitle">Add New Car</h2>
-    <div class="form-grid">
-      <div class="form-group"><label>Make *</label><input type="text" id="fMake" placeholder="e.g. Toyota" /></div>
-      <div class="form-group"><label>Model *</label><input type="text" id="fModel" placeholder="e.g. Mark X" /></div>
-      <div class="form-group"><label>Year *</label><input type="number" id="fYear" placeholder="e.g. 2015" min="1990" max="2030" /></div>
-      <div class="form-group"><label>Price *</label><input type="text" id="fPrice" placeholder="e.g. KSh 1,500,000" /></div>
-      <div class="form-group">
-        <label>Fuel</label>
-        <select id="fFuel"><option value="Petrol">Petrol</option><option value="Diesel">Diesel</option><option value="Hybrid">Hybrid</option><option value="Electric">Electric</option></select>
-      </div>
-      <div class="form-group">
-        <label>Transmission</label>
-        <select id="fTrans"><option value="Auto">Automatic</option><option value="Manual">Manual</option></select>
-      </div>
-      <div class="form-group"><label>Mileage</label><input type="text" id="fMileage" placeholder="e.g. 75,000 km" /></div>
-      <div class="form-group"><label>Location</label><input type="text" id="fLocation" value="Nairobi" /></div>
-      <div class="form-group">
-        <label>Category</label>
-        <select id="fCategory"><option value="sedan">Sedan</option><option value="suv">SUV</option><option value="hatchback">Hatchback</option></select>
-      </div>
-      <div class="form-group">
-        <label>Status</label>
-        <select id="fStatus"><option value="available">Available</option><option value="sold">Sold</option></select>
-      </div>
-      <div class="form-group full"><label>Description / Extra Notes</label><textarea id="fDesc" placeholder="e.g. Clean, accident-free, full service history."></textarea></div>
-
-      <!-- SPECS -->
-      <div class="form-group full" style="margin-top:4px">
-        <label style="font-size:0.88rem;font-weight:700;color:var(--text);margin-bottom:12px;display:block">🔧 Vehicle Specs</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group">
-            <label>Engine</label>
-            <input type="text" id="fEngine" placeholder="e.g. 2500cc V6" />
-          </div>
-          <div class="form-group">
-            <label>Drive</label>
-            <select id="fDrive">
-              <option value="">Select</option>
-              <option value="2WD">2WD</option>
-              <option value="4WD">4WD</option>
-              <option value="AWD">AWD</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Condition</label>
-            <select id="fCondition">
-              <option value="">Select</option>
-              <option value="Foreign Used">Foreign Used</option>
-              <option value="Locally Used">Locally Used</option>
-              <option value="Brand New">Brand New</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Colour</label>
-            <input type="text" id="fColour" placeholder="e.g. Silver" />
-          </div>
-          <div class="form-group">
-            <label>Body Type</label>
-            <select id="fBodyType">
-              <option value="">Select</option>
-              <option value="Saloon">Saloon</option>
-              <option value="Station Wagon">Station Wagon</option>
-              <option value="SUV">SUV</option>
-              <option value="Pick Up">Pick Up</option>
-              <option value="Hatchback">Hatchback</option>
-              <option value="Van">Van</option>
-              <option value="Coupe">Coupe</option>
-              <option value="Convertible">Convertible</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Doors</label>
-            <select id="fDoors">
-              <option value="">Select</option>
-              <option value="2">2</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Seats</label>
-            <select id="fSeats">
-              <option value="">Select</option>
-              <option value="2">2</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="form-group full">
-        <label>Photos</label>
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('photoFileInput').click()">
-          <div style="font-size:2rem;margin-bottom:8px">📷</div>
-          <p><strong>Click to upload photos</strong> or drag &amp; drop here</p>
-          <span>JPEG, PNG, WEBP — select multiple files at once</span>
-          <input type="file" id="photoFileInput" accept="image/jpeg,image/png,image/webp" multiple />
-        </div>
-        <div class="photo-previews" id="photoPreviews"></div>
-        <div class="upload-status" id="uploadStatus"></div>
-        <div class="hint" style="margin-top:6px">💡 Drag photos to reorder — first photo is the main thumbnail shown on the website</div>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="cancel-btn" onclick="closeFormModal()">Cancel</button>
-      <button class="save-btn" id="saveBtn" onclick="saveCar()">Save Car →</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-const SUPABASE_URL   = 'https://qmeosvkrbogdfmokgkpa.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZW9zdmtyYm9nZGZtb2tna3BhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDE5MjAsImV4cCI6MjA5Mzg3NzkyMH0.J_WDhH7n5C1HciuL45GSiQhPQXq2FS-creSdyvEHYDs';
-const STORAGE_BUCKET = 'car- images';
-const STORAGE_URL    = SUPABASE_URL + '/storage/v1/object/public/' + encodeURIComponent(STORAGE_BUCKET) + '/';
-
-var authToken         = null;
-var editingId         = null;
-var carsCache         = [];
-var uploadedPhotoUrls = [];
-
-/* ── AUTH ── */
-function authHeaders(json) {
-  var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (authToken || SUPABASE_KEY) };
-  if (json) h['Content-Type'] = 'application/json';
-  return h;
-}
-
-async function doLogin() {
-  var email = document.getElementById('loginEmail').value.trim();
-  var pass  = document.getElementById('loginPassword').value;
-  var btn   = document.querySelector('.login-btn');
-  if (!email || !pass) { showLoginError('Please enter your email and password.'); return; }
-  btn.textContent = 'Signing in...'; btn.disabled = true;
   try {
-    var res  = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: pass })
+    var res = await fetch(SUPABASE_URL + '/rest/v1/cars?order=id.asc', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
     });
+
+    if (!res.ok) throw new Error('Failed to fetch');
+
     var data = await res.json();
-    if (!res.ok || !data.access_token) {
-      showLoginError(data.error_description || 'Invalid email or password.');
-    } else {
-      authToken = data.access_token;
-      document.getElementById('userEmail').textContent     = email;
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('dashboard').style.display   = 'block';
-      loadCars();
-    }
-  } catch (e) { showLoginError('Connection error. Please try again.'); }
-  btn.textContent = 'Sign In →'; btn.disabled = false;
+
+    /* Normalise photos field — stored as comma-separated string in DB */
+    inventory = data.map(function(car) {
+      var photos = [];
+      if (car.photos && typeof car.photos === 'string' && car.photos.trim()) {
+        photos = car.photos.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+      } else if (Array.isArray(car.photos)) {
+        photos = car.photos;
+      }
+      return Object.assign({}, car, { photos: photos });
+    });
+
+    renderCars(currentFilter);
+    syncHeroCard();
+
+  } catch (err) {
+    console.error('Supabase error:', err);
+    if (grid) grid.innerHTML =
+      '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">' +
+      'Could not load inventory. Please refresh the page.' +
+      '</p>';
+  }
 }
 
-function showLoginError(msg) {
-  var el = document.getElementById('loginError');
-  el.textContent = msg; el.style.display = 'block';
-}
 
-function doLogout() {
-  authToken = null;
-  document.getElementById('dashboard').style.display   = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginPassword').value = '';
-}
+/* ══════════════════════════════════════
+   CAR CARD RENDERING
+══════════════════════════════════════ */
+const CARD_BG = [
+  'linear-gradient(135deg,#f0ede8,#ddd9d2)',
+  'linear-gradient(135deg,#e8ecf0,#d2d9dd)',
+  'linear-gradient(135deg,#eaf0e8,#d2ddd0)',
+  'linear-gradient(135deg,#f0e8e8,#ddd2d2)',
+  'linear-gradient(135deg,#ece8f0,#d9d2dd)',
+  'linear-gradient(135deg,#f0ece8,#ddd8d2)'
+];
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') doLogin();
-});
+function renderCars(filter) {
+  currentFilter = filter || 'all';
+  var grid = document.getElementById('carsGrid');
+  if (!grid) return;
 
-/* ── CARS ── */
-async function loadCars() {
-  try {
-    var res   = await fetch(SUPABASE_URL + '/rest/v1/cars?order=id.asc', { headers: authHeaders(true) });
-    carsCache = await res.json();
-    renderTable(); renderStats();
-  } catch (e) { showToast('Failed to load cars.', 'error'); }
-}
+  var list = inventory.slice();
+  if (currentFilter === 'available')     list = inventory.filter(function(c) { return c.status === 'available'; });
+  else if (currentFilter !== 'all')      list = inventory.filter(function(c) { return c.category === currentFilter; });
 
-function parsePhotos(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  return raw.split(',').map(function(p){ return p.trim(); }).filter(Boolean);
-}
-
-function carEmoji(car) { return (car.category === 'suv') ? '🚙' : '🚗'; }
-
-function renderTable() {
-  var tbody = document.getElementById('carsTableBody');
-  if (!carsCache.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:48px;color:var(--muted)">No cars yet. Click <strong>Add New Car</strong> to get started.</td></tr>';
+  if (list.length === 0) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">' +
+      'No cars in this category yet. <a href="#contact" style="color:#c8392b">Contact us</a> — we\'ll help you find what you need.' +
+      '</p>';
     return;
   }
-  tbody.innerHTML = carsCache.map(function(car) {
-    var photos  = parsePhotos(car.photos);
-    var isAvail = car.status === 'available';
-    var thumb   = photos.length
-      ? '<img src="' + photos[0] + '" class="car-thumb" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-        '<div class="car-thumb-placeholder" style="display:none">' + carEmoji(car) + '</div>'
-      : '<div class="car-thumb-placeholder">' + carEmoji(car) + '</div>';
-    var badge   = '<span class="badge ' + (isAvail ? 'badge-available' : 'badge-sold') + '">' + (isAvail ? '✓ Available' : '✗ Sold') + '</span>';
-    var togBtn  = isAvail
-      ? '<button class="sold-btn"   onclick="toggleStatus(' + car.id + ',\'sold\')"     >Mark Sold</button>'
-      : '<button class="unsold-btn" onclick="toggleStatus(' + car.id + ',\'available\')">Mark Available</button>';
-    return '<tr>' +
-      '<td>' + thumb + '</td>' +
-      '<td><strong>' + car.make + ' ' + car.model + '</strong><br><span style="color:var(--muted);font-size:0.8rem">' + car.year + '</span></td>' +
-      '<td>' + (car.price || '—') + '</td>' +
-      '<td>' + badge + '</td>' +
-      '<td style="text-transform:capitalize">' + (car.category || '—') + '</td>' +
-      '<td><div class="action-btns">' +
-        '<button class="edit-btn"   onclick="openEditModal(' + car.id + ')">Edit</button>' +
-        togBtn +
-        '<button class="delete-btn" onclick="deleteCar(' + car.id + ')">Delete</button>' +
-      '</div></td>' +
-    '</tr>';
+
+  grid.innerHTML = list.map(function(car, i) {
+    var hasPhotos   = car.photos && car.photos.length > 0;
+    var isAvailable = car.status === 'available';
+    var clickable   = hasPhotos && isAvailable;
+    var emoji       = car.category === 'suv' ? '🚙' : '🚗';
+    var bg          = CARD_BG[i % CARD_BG.length];
+
+    var waText = encodeURIComponent(
+      "Hi TrueDrive Kenya! I'm interested in the " +
+      car.make + ' ' + car.model + ' ' + car.year +
+      ' at ' + car.price + '. Is it still available?'
+    );
+
+    var mainImg = hasPhotos
+      ? '<img src="' + car.photos[0] + '" ' +
+          'alt="' + car.make + ' ' + car.model + '" ' +
+          'style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s" ' +
+          'onmouseover="this.style.transform=\'scale(1.04)\'" ' +
+          'onmouseout="this.style.transform=\'scale(1)\'" ' +
+          'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />' +
+        '<div style="display:none;font-size:4rem;width:100%;height:100%;' +
+          'align-items:center;justify-content:center;background:' + bg + '">' + emoji + '</div>'
+      : '<div style="font-size:4rem">' + emoji + '</div>';
+
+    var statusBadge =
+      '<span style="position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:100px;' +
+      'font-size:0.72rem;font-weight:600;pointer-events:none;' +
+      'background:' + (isAvailable ? '#dcfce7' : '#fee2e2') + ';' +
+      'color:' + (isAvailable ? '#15803d' : '#b91c1c') + '">' +
+      (isAvailable ? '✓ Available' : '✗ Sold') + '</span>';
+
+    var photoBadge = (hasPhotos && car.photos.length > 1)
+      ? '<span style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.55);' +
+        'color:white;padding:3px 10px;border-radius:100px;font-size:0.75rem;pointer-events:none">' +
+        '📷 ' + car.photos.length + ' photos</span>'
+      : '';
+
+    var hoverOverlay = clickable
+      ? '<div id="hov-' + car.id + '" ' +
+        'style="position:absolute;inset:0;background:rgba(0,0,0,0);color:transparent;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'font-size:0.9rem;font-weight:600;transition:all .2s;pointer-events:none">View Gallery →</div>'
+      : '';
+
+    var imgWrapper =
+      '<div ' + (clickable ? 'onclick="openGallery(' + car.id + ')" ' : '') +
+      (clickable
+        ? 'onmouseenter="var e=document.getElementById(\'hov-' + car.id + '\');' +
+          'if(e){e.style.background=\'rgba(0,0,0,0.35)\';e.style.color=\'white\'}" ' +
+          'onmouseleave="var e=document.getElementById(\'hov-' + car.id + '\');' +
+          'if(e){e.style.background=\'rgba(0,0,0,0)\';e.style.color=\'transparent\'}" '
+        : '') +
+      'style="position:relative;width:100%;height:210px;overflow:hidden;' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'background:' + bg + ';cursor:' + (clickable ? 'pointer' : 'default') + '">' +
+      mainImg + statusBadge + photoBadge + hoverOverlay +
+      '</div>';
+
+    var photoBtn = hasPhotos
+      ? '<button onclick="openGallery(' + car.id + ')" ' +
+        'style="background:transparent;color:#c8392b;border:1.5px solid #c8392b;' +
+        'padding:8px 10px;border-radius:6px;font-size:0.78rem;font-weight:500;cursor:pointer">📷</button>'
+      : '';
+
+    var inquireBtn =
+      '<button onclick="openInquiry(' + car.id + ')" ' +
+      'style="background:#c8392b;color:white;border:none;padding:8px 14px;' +
+      'border-radius:6px;font-size:0.82rem;font-weight:500;cursor:pointer">Inquire</button>';
+
+    var waBtn =
+      '<a href="https://wa.me/' + WHATSAPP_NUMBER + '?text=' + waText + '" ' +
+      'target="_blank" ' +
+      'style="background:#25d366;color:white;padding:8px 12px;border-radius:6px;' +
+      'font-size:0.82rem;font-weight:500;text-decoration:none;' +
+      'display:inline-flex;align-items:center;gap:5px">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="white">' +
+      '<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15' +
+      '-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475' +
+      '-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52' +
+      '.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207' +
+      '-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372' +
+      '-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 ' +
+      '5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 ' +
+      '1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347' +
+      'm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648' +
+      '-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 ' +
+      '5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884' +
+      'm8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 ' +
+      '4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 ' +
+      '11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>' +
+      'Chat</a>';
+
+    var actions = isAvailable
+      ? '<div style="display:flex;gap:7px;flex-wrap:wrap">' + photoBtn + inquireBtn + waBtn + '</div>'
+      : '<span style="font-size:0.82rem;font-weight:600;color:#b91c1c;background:#fee2e2;' +
+        'padding:5px 12px;border-radius:6px">SOLD</span>';
+
+    return '<div class="car-card">' +
+      imgWrapper +
+      '<div style="padding:18px">' +
+        '<div style="font-size:0.73rem;color:#8a8a82;font-weight:600;margin-bottom:3px;letter-spacing:0.5px">' +
+          car.make.toUpperCase() +
+        '</div>' +
+        '<div style="font-family:\'Syne\',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:2px">' +
+          car.model +
+        '</div>' +
+        '<div style="font-size:0.8rem;color:#8a8a82;margin-bottom:10px">' +
+          car.year + ' · ' + car.location +
+        '</div>' +
+        '<div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">' +
+          (car.fuel    ? '<span style="font-size:0.78rem;color:#8a8a82">⛽ ' + car.fuel    + '</span>' : '') +
+          (car.trans   ? '<span style="font-size:0.78rem;color:#8a8a82">🔄 ' + car.trans   + '</span>' : '') +
+          (car.mileage ? '<span style="font-size:0.78rem;color:#8a8a82">🛣 ' + car.mileage + '</span>' : '') +
+        '</div>' +
+        /* ── Expandable specs ── */
+        ((car.engine || car.drive || car.condition || car.colour || car.body_type || car.doors || car.seats || car.description)
+          ? '<div style="margin-bottom:12px">' +
+              '<button onclick="toggleSpecs(' + car.id + ')" id="specsBtn-' + car.id + '" ' +
+              'style="background:none;border:none;color:#c8392b;font-size:0.8rem;font-weight:600;cursor:pointer;padding:0;font-family:inherit">' +
+              'View Specs ▾</button>' +
+              '<div id="specs-' + car.id + '" style="display:none;margin-top:8px;padding:10px;background:#f5f4f0;border-radius:8px">' +
+                (car.engine    ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Engine</span><span>' + car.engine + '</span></div>' : '') +
+                (car.drive     ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Drive</span><span>' + car.drive + '</span></div>' : '') +
+                (car.condition ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Condition</span><span>' + car.condition + '</span></div>' : '') +
+                (car.colour    ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Colour</span><span>' + car.colour + '</span></div>' : '') +
+                (car.body_type ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Body Type</span><span>' + car.body_type + '</span></div>' : '') +
+                (car.doors     ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Doors</span><span>' + car.doors + '</span></div>' : '') +
+                (car.seats     ? '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e4e0;font-size:0.82rem"><span style="color:#8a8a82">Seats</span><span>' + car.seats + '</span></div>' : '') +
+                (car.description ? '<div style="font-size:0.8rem;color:#8a8a82;margin-top:6px;line-height:1.5">' + car.description + '</div>' : '') +
+              '</div>' +
+            '</div>'
+          : '') +
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:1.15rem;font-weight:800">' + car.price + '</div>' +
+          actions +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
-function renderStats() {
-  document.getElementById('statTotal').textContent     = carsCache.length;
-  document.getElementById('statAvailable').textContent = carsCache.filter(function(c){ return c.status==='available'; }).length;
-  document.getElementById('statSold').textContent      = carsCache.filter(function(c){ return c.status==='sold'; }).length;
+function filterCars(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderCars(filter);
 }
 
-/* ── UPLOAD ── */
-function initUploadZone() {
-  var zone  = document.getElementById('uploadZone');
-  var input = document.getElementById('photoFileInput');
-  input.addEventListener('change', function() { handleFiles(Array.from(input.files)); input.value = ''; });
-  zone.addEventListener('dragover',  function(e) { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', function()  { zone.classList.remove('drag-over'); });
-  zone.addEventListener('drop', function(e) {
-    e.preventDefault(); zone.classList.remove('drag-over');
-    handleFiles(Array.from(e.dataTransfer.files).filter(function(f){ return f.type.startsWith('image/'); }));
-  });
+function toggleSpecs(id) {
+  var panel = document.getElementById('specs-' + id);
+  var btn   = document.getElementById('specsBtn-' + id);
+  if (!panel) return;
+  var open = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  btn.textContent     = open ? 'View Specs ▾' : 'Hide Specs ▴';
 }
 
-async function handleFiles(files) {
-  if (!files.length) return;
-  document.getElementById('uploadStatus').textContent = 'Uploading ' + files.length + ' photo(s)...';
-  for (var i = 0; i < files.length; i++) { await uploadPhoto(files[i]); }
-  document.getElementById('uploadStatus').textContent = '✓ All photos uploaded!';
-  setTimeout(function() { document.getElementById('uploadStatus').textContent = ''; }, 3000);
-}
 
-async function uploadPhoto(file) {
-  var pid      = 'prev-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-  var previews = document.getElementById('photoPreviews');
-  var item     = document.createElement('div');
-  item.className = 'photo-preview-item'; item.id = pid;
-  item.innerHTML = '<img src="' + URL.createObjectURL(file) + '" /><div class="upload-progress">Uploading...</div>';
-  previews.appendChild(item);
+/* ══════════════════════════════════════
+   HERO CARD SYNC
+══════════════════════════════════════ */
+function syncHeroCard() {
+  var featured = null;
+  for (var i = 0; i < inventory.length; i++) {
+    if (inventory[i].status === 'available') { featured = inventory[i]; break; }
+  }
+  if (!featured && inventory.length) featured = inventory[0];
+  if (!featured) return;
 
-  var fileName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.-]/g, '-').toLowerCase();
-  try {
-    var res = await fetch(SUPABASE_URL + '/storage/v1/object/' + encodeURIComponent(STORAGE_BUCKET) + '/' + fileName, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': file.type, 'x-upsert': 'true' },
-      body: file
-    });
-    if (res.ok) {
-      var url = STORAGE_URL + fileName;
-      uploadedPhotoUrls.push(url);
-      item.dataset.url = url;
-      var isFirst = document.getElementById('photoPreviews').querySelectorAll('.photo-preview-item').length === 1;
-      item.innerHTML =
-        '<img src="' + url + '" />' +
-        (isFirst ? '<div class="main-badge">MAIN</div>' : '') +
-        '<div class="upload-done" id="done-' + pid + '">✓</div>' +
-        '<button class="remove-photo" onclick="removePhoto(\'' + url + '\',\'' + pid + '\')">✕</button>';
-      if (isFirst) item.style.borderColor = 'var(--accent)';
-      makeDraggable(item);
-      setTimeout(function() { var d = document.getElementById('done-' + pid); if (d) d.style.display='none'; }, 1500);
-    } else {
-      item.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;color:var(--accent)">✕</div>';
-      showToast('Failed to upload ' + file.name, 'error');
-    }
-  } catch (e) {
-    item.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;color:var(--accent)">✕</div>';
-    showToast('Upload error: ' + file.name, 'error');
+  var titleEl = document.querySelector('.hero-card-title');
+  var priceEl = document.querySelector('.hero-card-price');
+  var metaEl  = document.querySelector('.hero-card-meta');
+  var imgEl   = document.querySelector('.hero-card-img');
+  if (titleEl) titleEl.textContent = featured.make + ' ' + featured.model + ' ' + featured.year;
+  if (priceEl) priceEl.textContent = featured.price;
+  if (metaEl)  metaEl.innerHTML =
+    '<span>📍 ' + featured.location + '</span>' +
+    '<span>⛽ ' + featured.fuel + '</span>' +
+    '<span>🔄 ' + featured.trans + '</span>';
+  if (imgEl && featured.photos && featured.photos.length > 0) {
+    imgEl.innerHTML =
+      '<img src="' + featured.photos[0] + '" alt="' + featured.make + '" ' +
+      'style="width:100%;height:100%;object-fit:cover" ' +
+      'onerror="this.parentElement.innerHTML=\'🚗\'" />';
   }
 }
 
-function removePhoto(url, pid) {
-  uploadedPhotoUrls = uploadedPhotoUrls.filter(function(u){ return u !== url; });
-  var el = document.getElementById(pid); if (el) el.remove();
-  updateMainBadge();
-  syncUrlsFromDOM();
-}
 
-function updateMainBadge() {
-  var previews = document.getElementById('photoPreviews');
-  var items = previews.querySelectorAll('.photo-preview-item');
-  items.forEach(function(item, i) {
-    var badge = item.querySelector('.main-badge');
-    if (i === 0) {
-      item.style.borderColor = 'var(--accent)';
-      if (!badge) {
-        var b = document.createElement('div');
-        b.className = 'main-badge'; b.textContent = 'MAIN';
-        item.appendChild(b);
-      }
-    } else {
-      item.style.borderColor = 'transparent';
-      if (badge) badge.remove();
-    }
-  });
-}
+/* ══════════════════════════════════════
+   GALLERY
+══════════════════════════════════════ */
+var galleryPhotos = [];
+var galleryIndex  = 0;
 
-function syncUrlsFromDOM() {
-  var previews = document.getElementById('photoPreviews');
-  var items    = previews.querySelectorAll('.photo-preview-item');
-  uploadedPhotoUrls = [];
-  items.forEach(function(item) {
-    var url = item.dataset.url;
-    if (url) uploadedPhotoUrls.push(url);
-  });
-}
-
-function makeDraggable(item) {
-  item.setAttribute('draggable', true);
-  item.addEventListener('dragstart', function(e) {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', item.id);
-    setTimeout(function() { item.classList.add('dragging'); }, 0);
-  });
-  item.addEventListener('dragend', function() {
-    item.classList.remove('dragging');
-    document.querySelectorAll('.photo-preview-item').forEach(function(i){ i.classList.remove('drag-target'); });
-    updateMainBadge();
-    syncUrlsFromDOM();
-  });
-  item.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    item.classList.add('drag-target');
-  });
-  item.addEventListener('dragleave', function() { item.classList.remove('drag-target'); });
-  item.addEventListener('drop', function(e) {
-    e.preventDefault();
-    item.classList.remove('drag-target');
-    var dragId   = e.dataTransfer.getData('text/plain');
-    var dragItem = document.getElementById(dragId);
-    if (dragItem && dragItem !== item) {
-      var previews = document.getElementById('photoPreviews');
-      var items    = Array.from(previews.querySelectorAll('.photo-preview-item'));
-      var fromIdx  = items.indexOf(dragItem);
-      var toIdx    = items.indexOf(item);
-      if (fromIdx < toIdx) previews.insertBefore(dragItem, item.nextSibling);
-      else                 previews.insertBefore(dragItem, item);
-    }
-  });
-}
-
-function renderExistingPreviews(photos) {
-  var previews = document.getElementById('photoPreviews');
-  previews.innerHTML = '';
-  photos.forEach(function(url, i) {
-    if (!url) return;
-    var pid  = 'prev-ex-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-    var item = document.createElement('div');
-    item.className    = 'photo-preview-item';
-    item.id           = pid;
-    item.dataset.url  = url;
-    item.innerHTML    =
-      '<img src="' + url + '" />' +
-      (i === 0 ? '<div class="main-badge">MAIN</div>' : '') +
-      '<button class="remove-photo" onclick="removePhoto(\'' + url + '\',\'' + pid + '\')">✕</button>';
-    if (i === 0) item.style.borderColor = 'var(--accent)';
-    makeDraggable(item);
-    previews.appendChild(item);
-  });
-}
-
-/* ── MODALS ── */
-function openAddModal() {
-  editingId = null; uploadedPhotoUrls = [];
-  document.getElementById('modalTitle').textContent = 'Add New Car';
-  ['fMake','fModel','fYear','fPrice','fMileage','fEngine','fColour'].forEach(function(id){ document.getElementById(id).value = ''; });
-  document.getElementById('fFuel').value      = 'Petrol';
-  document.getElementById('fTrans').value     = 'Auto';
-  document.getElementById('fLocation').value  = 'Nairobi';
-  document.getElementById('fCategory').value  = 'sedan';
-  document.getElementById('fStatus').value    = 'available';
-  document.getElementById('fDrive').value     = '';
-  document.getElementById('fCondition').value = '';
-  document.getElementById('fBodyType').value  = '';
-  document.getElementById('fDoors').value     = '';
-  document.getElementById('fSeats').value     = '';
-  document.getElementById('fDesc').value      = '';
-  document.getElementById('photoPreviews').innerHTML  = '';
-  document.getElementById('uploadStatus').textContent = '';
-  document.getElementById('carFormModal').classList.add('open');
-}
-
-function openEditModal(id) {
+function openGallery(id) {
   var car = null;
-  for (var i = 0; i < carsCache.length; i++) { if (carsCache[i].id === id) { car = carsCache[i]; break; } }
-  if (!car) return;
-  editingId = id;
-  var existing = parsePhotos(car.photos);
-  uploadedPhotoUrls = existing.slice();
-  document.getElementById('modalTitle').textContent = 'Edit Car';
-  document.getElementById('fMake').value      = car.make      || '';
-  document.getElementById('fModel').value     = car.model     || '';
-  document.getElementById('fYear').value      = car.year      || '';
-  document.getElementById('fPrice').value     = car.price     || '';
-  document.getElementById('fFuel').value      = car.fuel      || 'Petrol';
-  document.getElementById('fTrans').value     = car.trans     || 'Auto';
-  document.getElementById('fMileage').value   = car.mileage   || '';
-  document.getElementById('fLocation').value  = car.location  || 'Nairobi';
-  document.getElementById('fCategory').value  = car.category  || 'sedan';
-  document.getElementById('fStatus').value    = car.status    || 'available';
-  document.getElementById('fDesc').value      = car.description || '';
-  document.getElementById('fEngine').value    = car.engine    || '';
-  document.getElementById('fDrive').value     = car.drive     || '';
-  document.getElementById('fCondition').value = car.condition || '';
-  document.getElementById('fColour').value    = car.colour    || '';
-  document.getElementById('fBodyType').value  = car.body_type || '';
-  document.getElementById('fDoors').value     = car.doors     || '';
-  document.getElementById('fSeats').value     = car.seats     || '';
-  document.getElementById('uploadStatus').textContent = '';
-  renderExistingPreviews(existing);
-  document.getElementById('carFormModal').classList.add('open');
+  for (var i = 0; i < inventory.length; i++) {
+    if (inventory[i].id === id) { car = inventory[i]; break; }
+  }
+  if (!car || !car.photos || !car.photos.length) { openInquiry(id); return; }
+
+  galleryPhotos = car.photos;
+  galleryIndex  = 0;
+
+  document.getElementById('galleryCarName').textContent  = car.make + ' ' + car.model + ' ' + car.year;
+  document.getElementById('galleryCarPrice').textContent = car.price;
+  document.getElementById('galleryCarMeta').textContent  = car.location + ' · ' + car.fuel + ' · ' + car.trans + ' · ' + car.mileage;
+  document.getElementById('galleryInquireBtn').onclick   = function() { closeGallery(); openInquiry(id); };
+
+  document.getElementById('thumbStrip').innerHTML = galleryPhotos.map(function(src, idx) {
+    return '<div onclick="goToSlide(' + idx + ')" id="gthumb-' + idx + '" ' +
+      'style="width:72px;height:52px;flex-shrink:0;border-radius:6px;overflow:hidden;cursor:pointer;' +
+      'border:2px solid ' + (idx === 0 ? '#c8392b' : 'transparent') + ';' +
+      'opacity:' + (idx === 0 ? '1' : '0.5') + ';transition:all .2s">' +
+      '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover" ' +
+      'onerror="this.parentElement.style.opacity=\'0.15\'" />' +
+      '</div>';
+  }).join('');
+
+  goToSlide(0);
+  document.getElementById('galleryModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-function closeFormModal() { document.getElementById('carFormModal').classList.remove('open'); editingId = null; }
+function closeGallery() {
+  document.getElementById('galleryModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
 
-/* ── SAVE ── */
-async function saveCar() {
-  var make  = document.getElementById('fMake').value.trim();
-  var model = document.getElementById('fModel').value.trim();
-  var year  = parseInt(document.getElementById('fYear').value);
-  var price = document.getElementById('fPrice').value.trim();
-  if (!make || !model || !year || !price) { showToast('Please fill in Make, Model, Year and Price.', 'error'); return; }
+function goToSlide(index) {
+  galleryIndex = (index + galleryPhotos.length) % galleryPhotos.length;
 
-  syncUrlsFromDOM(); // ensure order matches what's shown in previews
-  var payload = {
-    make: make, model: model, year: year, price: price,
-    fuel:     document.getElementById('fFuel').value,
-    trans:    document.getElementById('fTrans').value,
-    mileage:  document.getElementById('fMileage').value.trim(),
-    location: document.getElementById('fLocation').value.trim() || 'Nairobi',
-    category: document.getElementById('fCategory').value,
-    status:   document.getElementById('fStatus').value,
-    description: document.getElementById('fDesc').value.trim(),
-    engine:      document.getElementById('fEngine').value.trim(),
-    drive:       document.getElementById('fDrive').value,
-    condition:   document.getElementById('fCondition').value,
-    colour:      document.getElementById('fColour').value.trim(),
-    body_type:   document.getElementById('fBodyType').value,
-    doors:       document.getElementById('fDoors').value,
-    seats:       document.getElementById('fSeats').value,
-    photos:   uploadedPhotoUrls.join(',')
-  };
+  var img = document.getElementById('galleryMainImg');
+  img.style.opacity = '0';
+  setTimeout(function() {
+    img.src = galleryPhotos[galleryIndex];
+    img.style.opacity = '1';
+  }, 140);
 
-  var btn = document.getElementById('saveBtn');
-  btn.textContent = 'Saving...'; btn.disabled = true;
+  document.getElementById('slideCounter').textContent = (galleryIndex + 1) + ' / ' + galleryPhotos.length;
 
-  try {
-    var url     = SUPABASE_URL + '/rest/v1/cars' + (editingId ? '?id=eq.' + editingId : '');
-    var method  = editingId ? 'PATCH' : 'POST';
-    var headers = Object.assign({}, authHeaders(true), { 'Prefer': 'return=minimal' });
-    var res     = await fetch(url, { method: method, headers: headers, body: JSON.stringify(payload) });
-    if (res.ok) {
-      showToast(editingId ? '✓ Car updated!' : '✓ Car added!', 'success');
-      closeFormModal(); loadCars();
-    } else {
-      var err = await res.json();
-      showToast('Error: ' + (err.message || 'Could not save.'), 'error');
+  for (var i = 0; i < galleryPhotos.length; i++) {
+    var t = document.getElementById('gthumb-' + i);
+    if (t) {
+      t.style.borderColor = (i === galleryIndex) ? '#c8392b' : 'transparent';
+      t.style.opacity     = (i === galleryIndex) ? '1' : '0.5';
+      if (i === galleryIndex) t.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
-  } catch (e) { showToast('Connection error. Please try again.', 'error'); }
-
-  btn.textContent = 'Save Car →'; btn.disabled = false;
+  }
 }
 
-/* ── TOGGLE / DELETE ── */
-async function toggleStatus(id, newStatus) {
+function prevSlide() { goToSlide(galleryIndex - 1); }
+function nextSlide() { goToSlide(galleryIndex + 1); }
+
+
+/* ══════════════════════════════════════
+   INQUIRY MODAL
+══════════════════════════════════════ */
+function openInquiry(id) {
+  var car = null;
+  for (var i = 0; i < inventory.length; i++) {
+    if (inventory[i].id === id) { car = inventory[i]; break; }
+  }
+  if (!car) return;
+
+  document.getElementById('modalCarName').textContent = car.make + ' ' + car.model + ' ' + car.year;
+  document.getElementById('modalCarInfo').textContent = car.price + ' · ' + car.location + ' · ' + car.mileage;
+  document.getElementById('inquirySuccess').style.display = 'none';
+
+  var cf = document.getElementById('inquiryCarField');
+  if (cf) cf.value = car.make + ' ' + car.model + ' ' + car.year + ' — ' + car.price;
+
+  var msg = "Hello TrueDrive Kenya! I'm interested in the *" +
+    car.make + ' ' + car.model + ' ' + car.year +
+    '* at *' + car.price + '*. Is it still available?';
+  document.getElementById('modalWhatsAppBtn').href =
+    'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg);
+
+  document.getElementById('carModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('carModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+
+/* ══════════════════════════════════════
+   FORMS
+══════════════════════════════════════ */
+function setFormLoading(btn, loading) {
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.orig = btn.textContent;
+    btn.textContent  = 'Sending...';
+    btn.style.opacity = '0.7';
+  } else {
+    btn.disabled = false;
+    btn.textContent  = btn.dataset.orig || 'Send';
+    btn.style.opacity = '1';
+  }
+}
+
+async function submitSellForm(e) {
+  e.preventDefault();
+  var form    = e.target;
+  var btn     = form.querySelector('.submit-btn');
+  var success = document.getElementById('sellSuccess');
+  setFormLoading(btn, true);
   try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/cars?id=eq.' + id, {
-      method: 'PATCH',
-      headers: Object.assign({}, authHeaders(true), { 'Prefer': 'return=minimal' }),
-      body: JSON.stringify({ status: newStatus })
+    var res = await fetch(form.action, {
+      method: 'POST', body: new FormData(form),
+      headers: { 'Accept': 'application/json' }
     });
-    if (res.ok) { showToast('✓ Status updated!', 'success'); loadCars(); }
-    else showToast('Could not update status.', 'error');
-  } catch (e) { showToast('Connection error.', 'error'); }
+    if (res.ok) {
+      success.style.display = 'block';
+      form.reset();
+      setTimeout(function() { success.style.display = 'none'; }, 6000);
+    } else {
+      alert('Something went wrong. Please try WhatsApp or email us directly.');
+    }
+  } catch (err) {
+    alert('Could not send — please check your connection and try again.');
+  }
+  setFormLoading(btn, false);
 }
 
-async function deleteCar(id) {
-  var car  = carsCache.find(function(c){ return c.id === id; });
-  var name = car ? car.make + ' ' + car.model : 'this car';
-  if (!confirm('Delete ' + name + '? This cannot be undone.')) return;
+async function submitContactForm(e) {
+  e.preventDefault();
+  var form    = e.target;
+  var btn     = form.querySelector('.submit-btn');
+  var success = document.getElementById('contactSuccess');
+  setFormLoading(btn, true);
   try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/cars?id=eq.' + id, {
-      method: 'DELETE', headers: authHeaders(true)
+    var res = await fetch(form.action, {
+      method: 'POST', body: new FormData(form),
+      headers: { 'Accept': 'application/json' }
     });
-    if (res.ok) { showToast('Car deleted.', 'success'); loadCars(); }
-    else showToast('Could not delete car.', 'error');
-  } catch (e) { showToast('Connection error.', 'error'); }
+    if (res.ok) {
+      success.style.display = 'block';
+      form.reset();
+      setTimeout(function() { success.style.display = 'none'; }, 6000);
+    } else {
+      alert('Something went wrong. Please try WhatsApp or email us directly.');
+    }
+  } catch (err) {
+    alert('Could not send — please check your connection and try again.');
+  }
+  setFormLoading(btn, false);
 }
 
-/* ── TOAST ── */
-var toastTimer;
-function showToast(msg, type) {
-  var t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'show ' + (type || '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ t.className = ''; }, 3000);
+async function submitInquiry(e) {
+  e.preventDefault();
+  var form    = e.target;
+  var btn     = form.querySelector('.submit-btn');
+  var success = document.getElementById('inquirySuccess');
+  setFormLoading(btn, true);
+  try {
+    var res = await fetch(form.action, {
+      method: 'POST', body: new FormData(form),
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      success.style.display = 'block';
+      form.reset();
+      setTimeout(function() { success.style.display = 'none'; closeModal(); }, 3000);
+    } else {
+      alert('Something went wrong. Please use the WhatsApp button above.');
+    }
+  } catch (err) {
+    alert('Could not send — please use the WhatsApp button above.');
+  }
+  setFormLoading(btn, false);
 }
 
-document.getElementById('carFormModal').addEventListener('click', function(e){ if (e.target === this) closeFormModal(); });
-document.addEventListener('DOMContentLoaded', initUploadZone);
-</script>
-</body>
-</html>
+
+/* ══════════════════════════════════════
+   MOBILE NAV
+══════════════════════════════════════ */
+function toggleMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+}
+
+
+/* ══════════════════════════════════════
+   GOOGLE ANALYTICS + COOKIES
+══════════════════════════════════════ */
+var GA_ID = 'G-XXXXXXXXXX';
+
+function loadGoogleAnalytics() {
+  if (!GA_ID || GA_ID === 'G-XXXXXXXXXX') return;
+  if (document.getElementById('ga-script')) return;
+  var s = document.createElement('script');
+  s.id = 'ga-script'; s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { window.dataLayer.push(arguments); }
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', GA_ID, { anonymize_ip: true });
+}
+
+function acceptCookies() {
+  localStorage.setItem('td_cookies', 'accepted');
+  document.getElementById('cookieBanner').classList.remove('show');
+  loadGoogleAnalytics();
+}
+function declineCookies() {
+  localStorage.setItem('td_cookies', 'declined');
+  document.getElementById('cookieBanner').classList.remove('show');
+}
+
+
+/* ══════════════════════════════════════
+   INIT
+══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function() {
+
+  /* Load cars from Supabase */
+  loadInventory();
+
+  /* Floating WhatsApp button */
+  var waFloat = document.createElement('a');
+  waFloat.id     = 'waFloat';
+  waFloat.href   = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(WHATSAPP_MESSAGE);
+  waFloat.target = '_blank';
+  waFloat.title  = 'Chat on WhatsApp';
+  waFloat.innerHTML =
+    '<svg width="26" height="26" viewBox="0 0 24 24" fill="white">' +
+    '<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15' +
+    '-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475' +
+    '-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52' +
+    '.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207' +
+    '-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372' +
+    '-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 ' +
+    '5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 ' +
+    '1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347' +
+    'm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648' +
+    '-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 ' +
+    '5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884' +
+    'm8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 ' +
+    '4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 ' +
+    '11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+  document.body.appendChild(waFloat);
+
+  /* Cookie banner */
+  var cookieChoice = localStorage.getItem('td_cookies');
+  if (!cookieChoice) {
+    setTimeout(function() {
+      var banner = document.getElementById('cookieBanner');
+      if (banner) banner.classList.add('show');
+    }, 1500);
+  } else if (cookieChoice === 'accepted') {
+    loadGoogleAnalytics();
+  }
+
+  /* Keyboard nav for gallery */
+  document.addEventListener('keydown', function(e) {
+    var modal = document.getElementById('galleryModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    if (e.key === 'ArrowRight') nextSlide();
+    if (e.key === 'ArrowLeft')  prevSlide();
+    if (e.key === 'Escape')     closeGallery();
+  });
+
+  /* Close modals on backdrop click */
+  document.getElementById('galleryModal').addEventListener('click', function(e) {
+    if (e.target === this) closeGallery();
+  });
+  document.getElementById('carModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  /* Touch swipe for gallery */
+  var touchStartX = 0;
+  var gWrap = document.getElementById('galleryMainWrap');
+  if (gWrap) {
+    gWrap.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    gWrap.addEventListener('touchend', function(e) {
+      var diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 40) {
+        if (diff > 0) nextSlide(); else prevSlide();
+      }
+    });
+  }
+
+  /* Close mobile menu on outside tap */
+  document.addEventListener('click', function(e) {
+    var menu      = document.getElementById('mobileMenu');
+    var hamburger = document.querySelector('.hamburger');
+    if (menu && menu.classList.contains('open') &&
+        !menu.contains(e.target) && !hamburger.contains(e.target)) {
+      closeMobileMenu();
+    }
+  });
+
+});
