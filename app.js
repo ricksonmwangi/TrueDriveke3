@@ -1,121 +1,66 @@
 /* ============================================
    TRUEDRIVE KENYA — app.js
-   ============================================
-   HOW TO ADD A CAR:
-   Copy the template block at the bottom of the
-   inventory array, paste it, fill in details.
-
-   HOW TO ADD PHOTOS:
-   Put images in the /images folder, list them in
-   the photos: [] array.
-
-   HOW TO MARK AS SOLD:
-   Change  status: "available"
-   to      status: "sold"
+   Cars are now loaded from Supabase database.
+   To manage inventory, go to /admin.html
    ============================================ */
 
 
 /* ══════════════════════════════════════
-   CONFIG — update phone number here
+   CONFIG
 ══════════════════════════════════════ */
 const WHATSAPP         = '254758261532';
 const WHATSAPP_NUMBER  = WHATSAPP;
 const WHATSAPP_MESSAGE = "Hello TrueDrive Kenya! I'm interested in your services.";
 
+const SUPABASE_URL = 'https://qmeosvkrbogdfmokgkpa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZW9zdmtyYm9nZGZtb2tna3BhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDE5MjAsImV4cCI6MjA5Mzg3NzkyMH0.J_WDhH7n5C1HciuL45GSiQhPQXq2FS-creSdyvEHYDs';
+
+/* Live inventory loaded from Supabase */
+var inventory = [];
+var currentFilter = 'all';
+
 
 /* ══════════════════════════════════════
-   INVENTORY
+   SUPABASE FETCH
 ══════════════════════════════════════ */
-const inventory = [
-  {
-    id: 1,
-    make: 'Toyota',
-    model: 'Mark X',
-    year: 2015,
-    price: 'KSh 1,500,000',
-    fuel: 'Petrol',
-    trans: 'Auto',
-    mileage: '75,809 km',
-    location: 'Nairobi',
-    status: 'available',   // 'available' or 'sold'
-    category: 'sedan',     // 'sedan', 'suv', or 'hatchback'
-    desc: 'Clean, accident free, one previous owner.',
-    photos: [
-      'images/markx/mark-x-front.jpeg',
-      'images/markx/mark-x-front2.jpeg',
-      'images/markx/mark-x-back.jpeg',
-      'images/markx/mark-x-backint.jpeg',
-      'images/markx/mark-x-frontint.jpeg',
-      'images/markx/mark-x-leftint2.jpeg',
-      'images/markx/mark-x-leftside.jpeg',
-      'images/markx/mark-x-right.jpeg',
-      'images/markx/mark-x-steering.jpeg'
-    ]
-  },
-  {
-    id: 2,
-    make: "Subaru", model: "Impreza", year: 2007,
-    price: "KSh 750,000",
-    fuel: "Petrol", trans: "Auto", mileage: "—",
-    location: "Nairobi", status: "available", category: "hatchback",
-    emoji: "🚗", bg: "bg2",
-    desc: "",
-    photos: [
-      "images/subaru/subaru-frontleft.jpeg",
-      "images/subaru/subaru-frontright.jpeg",
-      "images/subaru/subaru-front.jpeg",
-      "images/subaru/subaru-back.jpeg",
-      "images/subaru/subaru-intback.jpeg",
-      "images/subaru/subaru-intfront.jpeg",
-      "images/subaru/subaru-backright.jpeg",
-      "images/subaru/subaru-intright.jpeg"
-     
-    ]
-  },
-  {
-    id: 3,
-    make: "Nissan", model: "navara", year: 2007,
-    price: "KSh 650,000",
-    fuel: "Diesel", trans: "Auto", mileage: "—",
-    location: "Nairobi", status: "available", category: "suv",
-    emoji: "🚗", bg: "bg3",
-    desc: "",
-    photos: [
-      "images/navara/navara-front.jpeg",
-      "images/navara/navara-bonnet.jpeg",
-      "images/navara/navara-frontright.jpeg",
-      "images/navara/navarafront-left.jpeg",
-      "images/navara/navara-backseat.jpeg",
-      "images/navara/navara-back.jpeg",
-      "images/navara/navara-backleft.jpeg",
-      "images/navara/navara-backright.jpeg"
-      
-    ]
-  }
-];
+async function loadInventory() {
+  var grid = document.getElementById('carsGrid');
+  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">Loading cars...</p>';
 
-  /* ── COPY THIS BLOCK TO ADD A NEW CAR ──────
-  ,{
-    id: 2,
-    make: 'Toyota',
-    model: 'Prado',
-    year: 2014,
-    price: 'KSh 3,200,000',
-    fuel: 'Diesel',
-    trans: 'Auto',
-    mileage: '98,000 km',
-    location: 'Nairobi',
-    status: 'available',
-    category: 'suv',
-    desc: '7 seater, leather interior, well maintained.',
-    photos: [
-      'images/prado-front.jpeg',
-      'images/prado-side.jpeg',
-      'images/prado-interior.jpeg'
-    ]
-  }
-  ─────────────────────────────────────────── */
+  try {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/cars?order=id.asc', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
 
+    if (!res.ok) throw new Error('Failed to fetch');
+
+    var data = await res.json();
+
+    /* Normalise photos field — stored as comma-separated string in DB */
+    inventory = data.map(function(car) {
+      var photos = [];
+      if (car.photos && typeof car.photos === 'string' && car.photos.trim()) {
+        photos = car.photos.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
+      } else if (Array.isArray(car.photos)) {
+        photos = car.photos;
+      }
+      return Object.assign({}, car, { photos: photos });
+    });
+
+    renderCars(currentFilter);
+    syncHeroCard();
+
+  } catch (err) {
+    console.error('Supabase error:', err);
+    if (grid) grid.innerHTML =
+      '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">' +
+      'Could not load inventory. Please refresh the page.' +
+      '</p>';
+  }
+}
 
 
 /* ══════════════════════════════════════
@@ -131,12 +76,13 @@ const CARD_BG = [
 ];
 
 function renderCars(filter) {
-  const grid = document.getElementById('carsGrid');
+  currentFilter = filter || 'all';
+  var grid = document.getElementById('carsGrid');
   if (!grid) return;
 
-  let list = inventory.slice();
-  if (filter === 'available')     list = inventory.filter(function(c) { return c.status === 'available'; });
-  else if (filter !== 'all')      list = inventory.filter(function(c) { return c.category === filter; });
+  var list = inventory.slice();
+  if (currentFilter === 'available')     list = inventory.filter(function(c) { return c.status === 'available'; });
+  else if (currentFilter !== 'all')      list = inventory.filter(function(c) { return c.category === currentFilter; });
 
   if (list.length === 0) {
     grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:48px;color:#8a8a82">' +
@@ -146,21 +92,19 @@ function renderCars(filter) {
   }
 
   grid.innerHTML = list.map(function(car, i) {
-    const hasPhotos   = car.photos && car.photos.length > 0;
-    const isAvailable = car.status === 'available';
-    const clickable   = hasPhotos && isAvailable;
-    const emoji       = car.category === 'suv' ? '🚙' : '🚗';
-    const bg          = CARD_BG[i % CARD_BG.length];
+    var hasPhotos   = car.photos && car.photos.length > 0;
+    var isAvailable = car.status === 'available';
+    var clickable   = hasPhotos && isAvailable;
+    var emoji       = car.category === 'suv' ? '🚙' : '🚗';
+    var bg          = CARD_BG[i % CARD_BG.length];
 
-    /* WhatsApp message for this specific car */
-    const waText = encodeURIComponent(
+    var waText = encodeURIComponent(
       "Hi TrueDrive Kenya! I'm interested in the " +
       car.make + ' ' + car.model + ' ' + car.year +
       ' at ' + car.price + '. Is it still available?'
     );
 
-    /* ── Image section ── */
-    const mainImg = hasPhotos
+    var mainImg = hasPhotos
       ? '<img src="' + car.photos[0] + '" ' +
           'alt="' + car.make + ' ' + car.model + '" ' +
           'style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s" ' +
@@ -171,28 +115,27 @@ function renderCars(filter) {
           'align-items:center;justify-content:center;background:' + bg + '">' + emoji + '</div>'
       : '<div style="font-size:4rem">' + emoji + '</div>';
 
-    const statusBadge =
+    var statusBadge =
       '<span style="position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:100px;' +
       'font-size:0.72rem;font-weight:600;pointer-events:none;' +
       'background:' + (isAvailable ? '#dcfce7' : '#fee2e2') + ';' +
       'color:' + (isAvailable ? '#15803d' : '#b91c1c') + '">' +
       (isAvailable ? '✓ Available' : '✗ Sold') + '</span>';
 
-    const photoBadge = (hasPhotos && car.photos.length > 1)
+    var photoBadge = (hasPhotos && car.photos.length > 1)
       ? '<span style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.55);' +
         'color:white;padding:3px 10px;border-radius:100px;font-size:0.75rem;pointer-events:none">' +
         '📷 ' + car.photos.length + ' photos</span>'
       : '';
 
-    /* hover overlay — pointer-events:none so it doesn't eat clicks */
-    const hoverOverlay = clickable
+    var hoverOverlay = clickable
       ? '<div id="hov-' + car.id + '" ' +
         'style="position:absolute;inset:0;background:rgba(0,0,0,0);color:transparent;' +
         'display:flex;align-items:center;justify-content:center;' +
         'font-size:0.9rem;font-weight:600;transition:all .2s;pointer-events:none">View Gallery →</div>'
       : '';
 
-    const imgWrapper =
+    var imgWrapper =
       '<div ' + (clickable ? 'onclick="openGallery(' + car.id + ')" ' : '') +
       (clickable
         ? 'onmouseenter="var e=document.getElementById(\'hov-' + car.id + '\');' +
@@ -206,19 +149,18 @@ function renderCars(filter) {
       mainImg + statusBadge + photoBadge + hoverOverlay +
       '</div>';
 
-    /* ── Action buttons ── */
-    const photoBtn = hasPhotos
+    var photoBtn = hasPhotos
       ? '<button onclick="openGallery(' + car.id + ')" ' +
         'style="background:transparent;color:#c8392b;border:1.5px solid #c8392b;' +
         'padding:8px 10px;border-radius:6px;font-size:0.78rem;font-weight:500;cursor:pointer">📷</button>'
       : '';
 
-    const inquireBtn =
+    var inquireBtn =
       '<button onclick="openInquiry(' + car.id + ')" ' +
       'style="background:#c8392b;color:white;border:none;padding:8px 14px;' +
       'border-radius:6px;font-size:0.82rem;font-weight:500;cursor:pointer">Inquire</button>';
 
-    const waBtn =
+    var waBtn =
       '<a href="https://wa.me/' + WHATSAPP_NUMBER + '?text=' + waText + '" ' +
       'target="_blank" ' +
       'style="background:#25d366;color:white;padding:8px 12px;border-radius:6px;' +
@@ -241,12 +183,11 @@ function renderCars(filter) {
       '11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>' +
       'Chat</a>';
 
-    const actions = isAvailable
+    var actions = isAvailable
       ? '<div style="display:flex;gap:7px;flex-wrap:wrap">' + photoBtn + inquireBtn + waBtn + '</div>'
       : '<span style="font-size:0.82rem;font-weight:600;color:#b91c1c;background:#fee2e2;' +
         'padding:5px 12px;border-radius:6px">SOLD</span>';
 
-    /* ── Assemble card ── */
     return '<div class="car-card">' +
       imgWrapper +
       '<div style="padding:18px">' +
@@ -285,6 +226,36 @@ function filterCars(filter, btn) {
 
 
 /* ══════════════════════════════════════
+   HERO CARD SYNC
+══════════════════════════════════════ */
+function syncHeroCard() {
+  var featured = null;
+  for (var i = 0; i < inventory.length; i++) {
+    if (inventory[i].status === 'available') { featured = inventory[i]; break; }
+  }
+  if (!featured && inventory.length) featured = inventory[0];
+  if (!featured) return;
+
+  var titleEl = document.querySelector('.hero-card-title');
+  var priceEl = document.querySelector('.hero-card-price');
+  var metaEl  = document.querySelector('.hero-card-meta');
+  var imgEl   = document.querySelector('.hero-card-img');
+  if (titleEl) titleEl.textContent = featured.make + ' ' + featured.model + ' ' + featured.year;
+  if (priceEl) priceEl.textContent = featured.price;
+  if (metaEl)  metaEl.innerHTML =
+    '<span>📍 ' + featured.location + '</span>' +
+    '<span>⛽ ' + featured.fuel + '</span>' +
+    '<span>🔄 ' + featured.trans + '</span>';
+  if (imgEl && featured.photos && featured.photos.length > 0) {
+    imgEl.innerHTML =
+      '<img src="' + featured.photos[0] + '" alt="' + featured.make + '" ' +
+      'style="width:100%;height:100%;object-fit:cover" ' +
+      'onerror="this.parentElement.innerHTML=\'🚗\'" />';
+  }
+}
+
+
+/* ══════════════════════════════════════
    GALLERY
 ══════════════════════════════════════ */
 var galleryPhotos = [];
@@ -305,7 +276,6 @@ function openGallery(id) {
   document.getElementById('galleryCarMeta').textContent  = car.location + ' · ' + car.fuel + ' · ' + car.trans + ' · ' + car.mileage;
   document.getElementById('galleryInquireBtn').onclick   = function() { closeGallery(); openInquiry(id); };
 
-  /* Build thumb strip */
   document.getElementById('thumbStrip').innerHTML = galleryPhotos.map(function(src, idx) {
     return '<div onclick="goToSlide(' + idx + ')" id="gthumb-' + idx + '" ' +
       'style="width:72px;height:52px;flex-shrink:0;border-radius:6px;overflow:hidden;cursor:pointer;' +
@@ -386,7 +356,7 @@ function closeModal() {
 
 
 /* ══════════════════════════════════════
-   FORMS — with loading states
+   FORMS
 ══════════════════════════════════════ */
 function setFormLoading(btn, loading) {
   if (loading) {
@@ -486,11 +456,28 @@ function closeMobileMenu() {
 
 
 /* ══════════════════════════════════════
-   COOKIE BANNER
+   GOOGLE ANALYTICS + COOKIES
 ══════════════════════════════════════ */
+var GA_ID = 'G-XXXXXXXXXX';
+
+function loadGoogleAnalytics() {
+  if (!GA_ID || GA_ID === 'G-XXXXXXXXXX') return;
+  if (document.getElementById('ga-script')) return;
+  var s = document.createElement('script');
+  s.id = 'ga-script'; s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { window.dataLayer.push(arguments); }
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', GA_ID, { anonymize_ip: true });
+}
+
 function acceptCookies() {
   localStorage.setItem('td_cookies', 'accepted');
   document.getElementById('cookieBanner').classList.remove('show');
+  loadGoogleAnalytics();
 }
 function declineCookies() {
   localStorage.setItem('td_cookies', 'declined');
@@ -503,33 +490,8 @@ function declineCookies() {
 ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function() {
 
-  /* Render car inventory */
-  renderCars('all');
-
-  /* Sync hero card with first available car */
-  var featured = null;
-  for (var i = 0; i < inventory.length; i++) {
-    if (inventory[i].status === 'available') { featured = inventory[i]; break; }
-  }
-  if (!featured && inventory.length) featured = inventory[0];
-  if (featured) {
-    var titleEl = document.querySelector('.hero-card-title');
-    var priceEl = document.querySelector('.hero-card-price');
-    var metaEl  = document.querySelector('.hero-card-meta');
-    var imgEl   = document.querySelector('.hero-card-img');
-    if (titleEl) titleEl.textContent = featured.make + ' ' + featured.model + ' ' + featured.year;
-    if (priceEl) priceEl.textContent = featured.price;
-    if (metaEl)  metaEl.innerHTML =
-      '<span>📍 ' + featured.location + '</span>' +
-      '<span>⛽ ' + featured.fuel + '</span>' +
-      '<span>🔄 ' + featured.trans + '</span>';
-    if (imgEl && featured.photos && featured.photos.length > 0) {
-      imgEl.innerHTML =
-        '<img src="' + featured.photos[0] + '" alt="' + featured.make + '" ' +
-        'style="width:100%;height:100%;object-fit:cover" ' +
-        'onerror="this.parentElement.innerHTML=\'🚗\'" />';
-    }
-  }
+  /* Load cars from Supabase */
+  loadInventory();
 
   /* Floating WhatsApp button */
   var waFloat = document.createElement('a');
@@ -556,14 +518,17 @@ document.addEventListener('DOMContentLoaded', function() {
   document.body.appendChild(waFloat);
 
   /* Cookie banner */
-  if (!localStorage.getItem('td_cookies')) {
+  var cookieChoice = localStorage.getItem('td_cookies');
+  if (!cookieChoice) {
     setTimeout(function() {
       var banner = document.getElementById('cookieBanner');
       if (banner) banner.classList.add('show');
     }, 1500);
+  } else if (cookieChoice === 'accepted') {
+    loadGoogleAnalytics();
   }
 
-  /* Keyboard navigation for gallery */
+  /* Keyboard nav for gallery */
   document.addEventListener('keydown', function(e) {
     var modal = document.getElementById('galleryModal');
     if (!modal || !modal.classList.contains('open')) return;
